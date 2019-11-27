@@ -5,7 +5,9 @@ import android.content.ContextWrapper;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
@@ -28,6 +30,15 @@ public class ScreenContainer<T extends ScreenFragment> extends ViewGroup {
   private boolean mNeedUpdate;
   private boolean mIsAttached;
   private boolean mLayoutEnqueued = false;
+
+  private final FragmentManager.FragmentLifecycleCallbacks mLifecycleCallbacks = new FragmentManager.FragmentLifecycleCallbacks() {
+    @Override
+    public void onFragmentResumed(@NonNull FragmentManager fm, @NonNull Fragment f) {
+      super.onFragmentResumed(fm, f);
+
+      updateIfNeeded();
+    }
+  };
 
   private final ChoreographerCompat.FrameCallback mFrameCallback = new ChoreographerCompat.FrameCallback() {
     @Override
@@ -159,7 +170,7 @@ public class ScreenContainer<T extends ScreenFragment> extends ViewGroup {
 
   protected void tryCommitTransaction() {
     if (mCurrentTransaction != null) {
-      mCurrentTransaction.commitAllowingStateLoss();
+      mCurrentTransaction.commit();
       mCurrentTransaction = null;
     }
   }
@@ -189,12 +200,16 @@ public class ScreenContainer<T extends ScreenFragment> extends ViewGroup {
     super.onAttachedToWindow();
     mIsAttached = true;
     updateIfNeeded();
+
+    getFragmentManager().registerFragmentLifecycleCallbacks(mLifecycleCallbacks, false);
   }
 
   @Override
   protected void onDetachedFromWindow() {
     super.onDetachedFromWindow();
     mIsAttached = false;
+
+    getFragmentManager().unregisterFragmentLifecycleCallbacks(mLifecycleCallbacks);
   }
 
   @Override
@@ -206,7 +221,10 @@ public class ScreenContainer<T extends ScreenFragment> extends ViewGroup {
   }
 
   private void updateIfNeeded() {
-    if (!mNeedUpdate || !mIsAttached) {
+    // We check if we can perform operations on a given fragment manager. In case state is
+    // saved some operations would throw. We can eagerly return here and expect update to be called
+    // when fragment host is resumed in `FragmentManager.FragmentLifecycleCallbacks`
+    if (!mNeedUpdate || !mIsAttached || getFragmentManager().isStateSaved()) {
       return;
     }
     mNeedUpdate = false;
