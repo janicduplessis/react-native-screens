@@ -9,6 +9,7 @@ import { Button } from '../shared';
 type StackParamList = {
   Main: undefined;
   Detail: undefined;
+  Detail2: undefined;
 };
 
 interface MainScreenProps {
@@ -20,7 +21,10 @@ const MainScreen = ({ navigation }: MainScreenProps): React.JSX.Element => (
     <Button
       testID="simple-native-stack-go-to-detail"
       title="Go to detail"
-      onPress={() => navigation.navigate('Detail')}
+      onPress={() => {
+        navigation.navigate('Detail');
+        navigation.navigate('Detail2');
+      }}
     />
     <Button onPress={() => navigation.pop()} title="🔙 Back to Examples" />
   </View>
@@ -32,6 +36,18 @@ interface DetailScreenProps {
 
 const DetailScreen = ({ navigation }: DetailScreenProps): React.JSX.Element => (
   <View style={{ ...styles.container, backgroundColor: 'thistle' }}>
+    <Button
+      title="Go back"
+      onPress={() => navigation.goBack()}
+      testID="simple-native-stack-detail-go-back"
+    />
+  </View>
+);
+
+const DetailScreen2 = ({
+  navigation,
+}: DetailScreenProps): React.JSX.Element => (
+  <View style={{ ...styles.container, backgroundColor: 'yellow' }}>
     <Button
       title="Go back"
       onPress={() => navigation.goBack()}
@@ -53,6 +69,7 @@ const App = (): React.JSX.Element => (
       options={{ title: 'Simple Native Stack' }}
     />
     <Stack.Screen name="Detail" component={DetailScreen} />
+    <Stack.Screen name="Detail2" component={DetailScreen2} />
   </Stack.Navigator>
 );
 
