@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import {
   createNativeStackNavigator,
   NativeStackNavigationProp,
@@ -45,13 +45,10 @@ const Stack = createNativeStackNavigator<StackParamList>();
 const App = (): React.JSX.Element => (
   <Stack.Navigator
     screenOptions={{
-      headerBackVisible: false,
+      animation: 'fade',
+      headerTitle: () => <Text>Simple Native Stack</Text>,
     }}>
-    <Stack.Screen
-      name="Main"
-      component={MainScreen}
-      options={{ title: 'Simple Native Stack' }}
-    />
+    <Stack.Screen name="Main" component={MainScreen} />
     <Stack.Screen name="Detail" component={DetailScreen} />
   </Stack.Navigator>
 );
