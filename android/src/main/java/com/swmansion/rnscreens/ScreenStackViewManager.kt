@@ -1,6 +1,7 @@
 package com.swmansion.rnscreens
 
 import android.view.View
+import android.view.ViewGroup
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.uimanager.LayoutShadowNode
@@ -31,7 +32,6 @@ class ScreenStackViewManager :
         index: Int,
     ) {
         require(child is Screen) { "Attempt attach child that is not of type RNScreen" }
-        NativeProxy.addScreenToMap(child.id, child)
         parent.addScreen(child, index)
     }
 
@@ -39,19 +39,29 @@ class ScreenStackViewManager :
         parent: ScreenStack,
         index: Int,
     ) {
-        val screen = parent.getScreenAt(index)
-        prepareOutTransition(screen)
+        prepareOutTransition(parent.getScreenAt(index))
         parent.removeScreenAt(index)
-        NativeProxy.removeScreenFromMap(screen.id)
     }
 
     private fun prepareOutTransition(screen: Screen?) {
-        screen?.startRemovalTransition()
+        startTransitionRecursive(screen)
     }
 
-    override fun invalidate() {
-        super.invalidate()
-        NativeProxy.clearMapOnInvalidate()
+    private fun startTransitionRecursive(parent: ViewGroup?) {
+        parent?.let {
+            for (i in 0 until it.childCount) {
+                val child = it.getChildAt(i)
+                child?.let { view -> it.startViewTransition(view) }
+                if (child is ScreenStackHeaderConfig) {
+                    // we want to start transition on children of the toolbar too,
+                    // which is not a child of ScreenStackHeaderConfig
+                    startTransitionRecursive(child.toolbar)
+                }
+                if (child is ViewGroup) {
+                    startTransitionRecursive(child)
+                }
+            }
+        }
     }
 
     override fun getChildCount(parent: ScreenStack) = parent.screenCount
