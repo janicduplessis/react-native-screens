@@ -20,7 +20,7 @@ class JSI_EXPORT RNSModalScreenShadowNode final
  public:
   using ConcreteViewShadowNode::ConcreteViewShadowNode;
 
-  Point getContentOriginOffset(bool includeTransform) const override;
+  Point getContentOriginOffset() const override;
   static ShadowNodeTraits BaseTraits() {
     auto traits = ConcreteViewShadowNode::BaseTraits();
     traits.set(ShadowNodeTraits::Trait::RootNodeKind);
