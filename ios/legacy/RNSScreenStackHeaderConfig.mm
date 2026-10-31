@@ -612,10 +612,10 @@ RNS_IGNORE_SUPER_CALL_END
   navitem.leftItemsSupplementBackButton = config.backButtonInCustomView;
 #endif
   navitem.titleView = nil;
-  navitem.leftBarButtonItems = nil;
-  // Right items are collected here and set once, below: clearing
-  // `navitem.rightBarButtonItems` first would make every header update replace
+  // Bar button items are collected here and set once, below: clearing
+  // `navitem.*BarButtonItems` first would make every header update replace
   // the items without animation, so iOS 26 could never morph them.
+  NSMutableArray<UIBarButtonItem *> *leftItems = [NSMutableArray new];
   NSMutableArray<UIBarButtonItem *> *rightItems = [NSMutableArray new];
 
 #if !TARGET_OS_TV
@@ -629,10 +629,7 @@ RNS_IGNORE_SUPER_CALL_END
     // `- [RNSScreenStackHeaderConfig replaceNavigationBarViewsWithSnapshotOfSubview:]` method.
     switch (subview.type) {
       case RNSScreenStackHeaderSubviewTypeLeft: {
-        NSArray<UIBarButtonItem *> *currentItems = navitem.leftBarButtonItems ?: @[];
-        NSMutableArray<UIBarButtonItem *> *mutableItems = [currentItems mutableCopy];
-        [mutableItems addObject:[subview getUIBarButtonItem]];
-        navitem.leftBarButtonItems = mutableItems;
+        [leftItems addObject:[subview getUIBarButtonItem]];
         break;
       }
       case RNSScreenStackHeaderSubviewTypeRight: {
@@ -701,14 +698,18 @@ RNS_IGNORE_SUPER_CALL_END
   // This assignment should be done after `navitem.titleView = ...` assignment (iOS 16.0 bug).
   // See: https://github.com/software-mansion/react-native-screens/issues/1570 (comments)
   navitem.title = config.title;
-  navitem.leftBarButtonItems = [config barButtonItemsFromConfigs:config.headerLeftBarButtonItems
-                                                withCurrentItems:navitem.leftBarButtonItems];
   // Not animated during a push or pop, which animates the bar itself, nor before
   // the screen is on screen (its first header setup).
-  [self setRightBarButtonItems:[config barButtonItemsFromConfigs:config.headerRightBarButtonItems
-                                                withCurrentItems:rightItems]
-              onNavigationItem:navitem
-                      animated:animated && vc.transitionCoordinator == nil && vc.viewIfLoaded.window != nil];
+  BOOL animateItems = animated && vc.transitionCoordinator == nil && vc.viewIfLoaded.window != nil;
+  [self setBarButtonItems:[config barButtonItemsFromConfigs:config.headerLeftBarButtonItems withCurrentItems:leftItems]
+                     left:YES
+         onNavigationItem:navitem
+                 animated:animateItems];
+  [self setBarButtonItems:[config barButtonItemsFromConfigs:config.headerRightBarButtonItems
+                                           withCurrentItems:rightItems]
+                     left:NO
+         onNavigationItem:navitem
+                 animated:animateItems];
 
   // Setting navigation bar visibility is split to mitigate iOS 26 bug with bar button items
   // (setting nav bar visibility should be done after `navitem.*BarButtonItems`).
@@ -839,12 +840,14 @@ RNS_IGNORE_SUPER_CALL_END
   }
 }
 
-/// Sets the right bar button items of `navitem`, animated only when `animated` is YES and the set of
-/// items changed (see `matchingKeysForBarButtonItems:`).
-+ (void)setRightBarButtonItems:(NSArray<UIBarButtonItem *> *)items
-              onNavigationItem:(UINavigationItem *)navitem
-                      animated:(BOOL)animated
+/// Sets the left or right bar button items of `navitem`, animated only when `animated` is YES and the
+/// set of items changed (see `matchingKeysForBarButtonItems:`).
++ (void)setBarButtonItems:(NSArray<UIBarButtonItem *> *)items
+                     left:(BOOL)left
+         onNavigationItem:(UINavigationItem *)navitem
+                 animated:(BOOL)animated
 {
+  NSArray<UIBarButtonItem *> *currentItems = (left ? navitem.leftBarButtonItems : navitem.rightBarButtonItems) ?: @[];
   // Config items are recreated on every header update, so animating each
   // assignment would animate unrelated changes (a new title, a new tint).
   // Animate only when the set of items changes, matched by `identifier`. On
@@ -853,11 +856,15 @@ RNS_IGNORE_SUPER_CALL_END
   BOOL setChanged = NO;
 #if RNS_IPHONE_OS_VERSION_AVAILABLE(26_0) && !TARGET_OS_TV
   if (@available(iOS 26.0, *)) {
-    setChanged = ![[self matchingKeysForBarButtonItems:navitem.rightBarButtonItems ?: @[]]
-        isEqualToArray:[self matchingKeysForBarButtonItems:items]];
+    setChanged =
+        ![[self matchingKeysForBarButtonItems:currentItems] isEqualToArray:[self matchingKeysForBarButtonItems:items]];
   }
 #endif // RNS_IPHONE_OS_VERSION_AVAILABLE(26_0) && !TARGET_OS_TV
-  [navitem setRightBarButtonItems:items animated:animated && setChanged];
+  if (left) {
+    [navitem setLeftBarButtonItems:items animated:animated && setChanged];
+  } else {
+    [navitem setRightBarButtonItems:items animated:animated && setChanged];
+  }
 }
 
 #if RNS_IPHONE_OS_VERSION_AVAILABLE(26_0) && !TARGET_OS_TV

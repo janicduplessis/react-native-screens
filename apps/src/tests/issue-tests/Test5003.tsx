@@ -29,7 +29,8 @@ function Badge() {
 
 /**
  * iOS 26: switching between [Edit] and [Delete, Done] must morph the Liquid Glass
- * (UIKit matches the items by `identifier`). A title-only change must not animate
+ * (UIKit matches the items by `identifier`). Edit mode also adds a [Select All]
+ * left item, which must dissolve in and out. A title-only change must not animate
  * the items. Custom (React element) items must keep rendering.
  */
 function Items({ navigation }: NativeStackScreenProps<Routes, 'Items'>) {
@@ -40,6 +41,17 @@ function Items({ navigation }: NativeStackScreenProps<Routes, 'Items'>) {
   useLayoutEffect(() => {
     navigation.setOptions({
       title: `Items (${count})`,
+      unstable_headerLeftItems: () =>
+        editing
+          ? [
+              {
+                type: 'button' as const,
+                label: 'Select All',
+                identifier: 'select-all',
+                onPress: () => {},
+              },
+            ]
+          : [],
       unstable_headerRightItems: () => [
         ...(custom ? [{ type: 'custom' as const, element: <Badge /> }] : []),
         ...(editing
